@@ -9,7 +9,7 @@ interface AnalysisChartProps {
 
 export const AnalysisChart: React.FC<AnalysisChartProps> = ({ result }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { darkMode, results } = useSchedulingStore();
+  const { darkMode } = useSchedulingStore();
 
   useEffect(() => {
     const canvas = canvasRef.current;

@@ -7,6 +7,7 @@ import { Header } from './Header';
 import { JobInput } from './JobInput';
 import { GanttChart } from './GanttChart';
 import { MetricsDashboard } from './MetricsDashboard';
+import { AnalysisChart } from './AnalysisChart';
 import { AlgorithmSelector, AlgorithmComparison } from './AlgorithmSelector';
 import { ContextPanel } from './ContextPanel';
 
@@ -140,6 +141,17 @@ export const App: React.FC = () => {
           >
             <MetricsDashboard result={currentResult} />
           </motion.div>
+
+          {/* Analysis Chart Section */}
+          {currentResult && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8"
+            >
+              <AnalysisChart result={currentResult} />
+            </motion.div>
+          )}
 
           {/* Context Panel Section - Full Width */}
           <motion.div

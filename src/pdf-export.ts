@@ -14,6 +14,88 @@ if (globalFonts.pdfMake?.vfs) {
   // Already set or default
 }
 
+function generateAnalysisChartImage(result: SchedulingResult): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 600;
+  const ctx = canvas.getContext('2d')!;
+  
+  const width = canvas.width;
+  const height = canvas.height;
+  
+  // White background for PDF
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+
+  const padding = 100;
+  const chartWidth = width - padding * 2;
+  const chartHeight = height - padding * 2;
+
+  const jobs = result.jobs;
+  if (jobs.length === 0) return canvas.toDataURL();
+
+  const maxVal = Math.max(...jobs.map(j => Math.max(j.waitingTime, j.turnaroundTime))) || 1;
+  const yScale = chartHeight / (maxVal * 1.2);
+  const xScale = chartWidth / jobs.length;
+  const barWidth = Math.min(xScale * 0.35, 60);
+
+  // Draw Grid & Axes
+  ctx.strokeStyle = '#f1f5f9';
+  ctx.lineWidth = 2;
+  for (let i = 0; i <= 5; i++) {
+    const val = (maxVal * 1.2 * i) / 5;
+    const y = height - padding - val * yScale;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+    ctx.fillStyle = '#64748b';
+    ctx.font = '20px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(val.toFixed(0), padding - 20, y + 7);
+  }
+
+  // Draw Bars
+  jobs.forEach((job, i) => {
+    const x = padding + i * xScale + xScale / 2;
+    
+    // WT Bar
+    const wtHeight = job.waitingTime * yScale;
+    const wtY = height - padding - wtHeight;
+    ctx.fillStyle = '#3b82f6';
+    ctx.fillRect(x - barWidth - 4, wtY, barWidth, wtHeight);
+    
+    // TAT Bar
+    const tatHeight = job.turnaroundTime * yScale;
+    const tatY = height - padding - tatHeight;
+    ctx.fillStyle = '#a855f7';
+    ctx.fillRect(x + 4, tatY, barWidth, tatHeight);
+
+    // Job Label
+    ctx.fillStyle = '#1e293b';
+    ctx.font = 'bold 24px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(job.job.name, x, height - padding + 40);
+  });
+
+  // Legend
+  const legendY = 50;
+  ctx.font = 'bold 22px Inter, sans-serif';
+  ctx.textAlign = 'left';
+  
+  ctx.fillStyle = '#3b82f6';
+  ctx.fillRect(padding, legendY, 24, 24);
+  ctx.fillStyle = '#1e293b';
+  ctx.fillText('Waiting Time (ms)', padding + 40, legendY + 20);
+
+  ctx.fillStyle = '#a855f7';
+  ctx.fillRect(padding + 300, legendY, 24, 24);
+  ctx.fillStyle = '#1e293b';
+  ctx.fillText('Turnaround Time (ms)', padding + 340, legendY + 20);
+
+  return canvas.toDataURL('image/png');
+}
+
 export function generatePDFReport(
   jobs: Job[],
   results: Record<string, SchedulingResult>,
@@ -39,9 +121,6 @@ export function generatePDFReport(
       margin: [0, 0, 0, 20],
     });
 
-    // ... (rest of the report content generation - same as before) ...
-    // Note: I will include the full content to ensure it's correct.
-    
     // Jobs Section
     docContent.push({
       text: 'Input Jobs',
@@ -79,7 +158,7 @@ export function generatePDFReport(
 
     // Algorithm Results Section
     docContent.push({
-      text: 'Scheduling Results',
+      text: 'Scheduling Results & Performance Analysis',
       fontSize: 16,
       bold: true,
       color: '#1e3a8a',
@@ -91,10 +170,11 @@ export function generatePDFReport(
         // Algorithm heading
         docContent.push({
           text: algorithm,
-          fontSize: 13,
+          fontSize: 14,
           bold: true,
           color: '#059669',
           margin: [0, 15, 0, 8],
+          pageBreak: docContent.length > 5 ? 'before' : undefined,
         });
 
         // Metrics table
@@ -124,6 +204,22 @@ export function generatePDFReport(
             body: metricsTable,
           },
           margin: [0, 0, 0, 15],
+        });
+
+        // Analysis Chart
+        docContent.push({
+          text: 'Performance Analysis Chart (WT vs TAT)',
+          fontSize: 11,
+          bold: true,
+          color: '#1e3a8a',
+          margin: [0, 10, 0, 5],
+        });
+
+        const chartImage = generateAnalysisChartImage(result);
+        docContent.push({
+          image: chartImage,
+          width: 500,
+          margin: [0, 0, 0, 20],
         });
 
         // Job Details
